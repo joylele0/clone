@@ -2,6 +2,7 @@ import os
 import pickle
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
+from googleapiclient.discovery import build  # Add this import
 
 SCOPES = ["https://www.googleapis.com/auth/drive"]
 
@@ -74,7 +75,6 @@ class GoogleAuth:
 
     def get_service(self):
         """Get Google Drive service instance"""
-        from googleapiclient.discovery import build
         return build('drive', 'v3', credentials=self.creds)
 
     def get_user_info(self):

@@ -1,5 +1,7 @@
 from googleapiclient.errors import HttpError
+from googleapiclient.http import MediaFileUpload
 from datetime import datetime
+import os
 
 class DriveService:
     """Handles all Google Drive file and folder operations"""
@@ -94,6 +96,38 @@ class DriveService:
             return folder
         except HttpError as error:
             print(f"Error creating folder: {error}")
+            return None
+    
+    def upload_file(self, file_path, parent_id='root'):
+        """
+        Upload a file to Google Drive
+        Args:
+            file_path: Path to the file to upload
+            parent_id: Parent folder ID (default: 'root')
+        Returns:
+            Uploaded file metadata or None
+        """
+        try:
+            file_name = os.path.basename(file_path)
+            file_metadata = {
+                'name': file_name,
+                'parents': [parent_id]
+            }
+            
+            media = MediaFileUpload(file_path, resumable=True)
+            
+            file = self.service.files().create(
+                body=file_metadata,
+                media_body=media,
+                fields='id, name, mimeType, size'
+            ).execute()
+            
+            return file
+        except HttpError as error:
+            print(f"Error uploading file: {error}")
+            return None
+        except Exception as error:
+            print(f"Error uploading file: {error}")
             return None
     
     def move_file(self, file_id, new_parent_id):
