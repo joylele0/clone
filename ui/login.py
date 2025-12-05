@@ -1,7 +1,7 @@
 import flet as ft
 from flet import Icon, Icons, Text, FontWeight, TextAlign, Container, ElevatedButton, Colors
 from services.auth_service import GoogleAuth
-import webbrowser
+
 
 class LoginView(ft.Column):
     def __init__(self, page, auth_service: GoogleAuth, on_success):
@@ -29,7 +29,6 @@ class LoginView(ft.Column):
         self.status_text = Text("", color=Colors.RED)
         self.controls.append(self.status_text)
 
-        # Single login button
         self.login_button = ElevatedButton(
             text="Login with Google",
             icon=Icons.LOGIN,
@@ -48,7 +47,7 @@ class LoginView(ft.Column):
         self.page.update()
 
         try:
-            # This opens the browser automatically
+            
             self.auth.login()
 
             if self.auth.is_authenticated():
