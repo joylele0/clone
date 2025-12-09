@@ -1,10 +1,13 @@
 # LMS Alternative
-A desktop application for managing Google Drive folders and files, built with [Flet](https://flet.dev/) (Python). Designed as a lightweight Learning Management System (LMS) alternative for students and educators.
-
-
 ![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)
 ![Flet](https://img.shields.io/badge/Flet-UI-green.svg)
 ![Google Drive API](https://img.shields.io/badge/Google%20Drive-API%20v3-yellow.svg)
+
+## 📖 Description
+
+**LMS Alternative** is a robust desktop application designed to streamline the academic workflow for students and educators. Built with [Flet](https://flet.dev/) (Python), it functions as a lightweight **Learning Management System (LMS)** that integrates seamless file management with essential academic tools.
+
+By layering organizational features over **Google Drive**, this application provides a centralized dashboard where users can manage assignments, track deadlines, and organize course materials without the complexity of traditional LMS platforms. Whether you need to submit assignments, manage shared resources, or simply keep your digital workspace tidy, LMS Alternative offers a simple, efficient solution.
 
 ## 🎯 Purpose
 

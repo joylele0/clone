@@ -6,6 +6,8 @@ import os
 import hashlib
 import time
 import re
+import io
+from googleapiclient.http import MediaIoBaseDownload
 
 
 class DriveService:
@@ -271,7 +273,6 @@ class DriveService:
         return self._retry_request(make_request, "batch_get_file_info") or {}
     
     def create_folder(self, folder_name, parent_id='root'):
-        
         def make_request():
             file_metadata = {
                 'name': folder_name,
@@ -291,10 +292,12 @@ class DriveService:
         
         return folder
     
-    def upload_file(self, file_path, parent_id='root', progress_callback=None):
+    def upload_file(self, file_path, parent_id='root', file_name=None, progress_callback=None):
         
         try:
-            file_name = os.path.basename(file_path)
+            if not file_name:
+                file_name = os.path.basename(file_path)
+                
             file_metadata = {
                 'name': file_name,
                 'parents': [parent_id]
@@ -305,7 +308,7 @@ class DriveService:
             request = self.service.files().create(
                 body=file_metadata,
                 media_body=media,
-                fields='id, name, mimeType, size'
+                fields='id, name, mimeType, size, webViewLink, parents'
             )
             
             response = None
@@ -314,7 +317,6 @@ class DriveService:
                 if status and progress_callback:
                     progress_callback(status.resumable_progress, status.total_size)
             
-     
             self._invalidate_cache(parent_id)
             
             return response
@@ -326,10 +328,54 @@ class DriveService:
             print(f"Error uploading file: {error}")
             return None
     
+    def update_file(self, file_id, file_path, new_name=None):
+        try:
+            file_metadata = {}
+            if new_name:
+                file_metadata['name'] = new_name
+            
+            media = MediaFileUpload(file_path, resumable=True)
+            
+            updated_file = self.service.files().update(
+                fileId=file_id,
+                body=file_metadata,
+                media_body=media,
+                fields='id, name, mimeType, modifiedTime'
+            ).execute()
+            
+            self._invalidate_cache(file_id)
+            return updated_file
+        except Exception as error:
+            print(f"Error updating file: {error}")
+            return None
+
+    def read_file_content(self, file_id):
+        try:
+            request = self.service.files().get_media(fileId=file_id)
+            file = io.BytesIO()
+            downloader = MediaIoBaseDownload(file, request)
+            done = False
+            while done is False:
+                status, done = downloader.next_chunk()
+            
+            return file.getvalue().decode('utf-8')
+        except Exception as error:
+            print(f"Error reading file content: {error}")
+            return None
+
+    def find_file(self, name, parent_id):
+        query = f"name = '{name}' and '{parent_id}' in parents and trashed=false"
+        results = self.service.files().list(
+            q=query,
+            pageSize=1,
+            fields="files(id, name, mimeType, modifiedTime)"
+        ).execute()
+        files = results.get('files', [])
+        return files[0] if files else None
+
     def move_file(self, file_id, new_parent_id):
         
         def make_request():
-            # Get current parents
             file = self.service.files().get(
                 fileId=file_id,
                 fields='parents'
@@ -417,7 +463,6 @@ class DriveService:
         
         folders = self._retry_request(make_request, f"get_folder_tree({folder_id})") or []
         
-        # Recursively get subfolders
         for folder in folders:
             folder['children'] = self.get_folder_tree(
                 folder['id'], 
