@@ -234,7 +234,7 @@ pip install flet google-auth google-auth-oauthlib google-api-python-client
 
 This project is licensed under the MIT License. 
 Copyright © 2025 **Prince Gabrielle Jhon M. Libertad (ASTRALLIBERTAD)**  
-See [`LICENSE`](LICENSE) for more information.
+See [`LICENSE`](LICENSE.txt) for more information.
 
 ## 🙏 Acknowledgments
 
