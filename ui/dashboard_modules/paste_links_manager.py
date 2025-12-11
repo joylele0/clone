@@ -8,6 +8,12 @@ SAVED_LINKS_FILE = "saved_links.json"
 class PasteLinksManager:
     def __init__(self, dashboard):
         self.dash = dashboard
+        
+        try:
+            from services.file_preview_service import FilePreviewService
+            self.file_preview = FilePreviewService(dashboard.page, dashboard.drive)
+        except ImportError:
+            self.file_preview = None
     
     def load_saved_links(self):
         if os.path.exists(SAVED_LINKS_FILE):
@@ -52,12 +58,18 @@ class PasteLinksManager:
         if item.get("mimeType") == "application/vnd.google-apps.folder":
             self.dash.folder_navigator.show_folder_contents(item["id"], item.get("name", item["id"]))
         else:
-            info = self.dash.drive.get_file_info(item["id"])
-            if info:
-                self.dash.file_manager.show_file_info(info)
+            if self.file_preview:
+                self.file_preview.show_preview(
+                    file_id=item["id"],
+                    file_name=item.get("name", "File")
+                )
             else:
-                self.dash.page.snack_bar = ft.SnackBar(ft.Text("Failed to open saved link"), open=True)
-                self.dash.page.update()
+                info = self.dash.drive.get_file_info(item["id"])
+                if info:
+                    self.dash.file_manager.show_file_info(info)
+                else:
+                    self.dash.page.snack_bar = ft.SnackBar(ft.Text("Failed to open saved link"), open=True)
+                    self.dash.page.update()
     
     def load_paste_links_view(self):
         self.dash.current_view = "paste_links"
@@ -68,33 +80,17 @@ class PasteLinksManager:
             padding=10
         )
 
-        button = ft.Container(
-            content=ft.ResponsiveRow(
-                [
-                    ft.TextButton(
-                        "Cancel",
-                        on_click=lambda e: self.dash.close_dialog(dialog),
-                        col={"md": 4},
-                    ),
-                    ft.ElevatedButton(
-                        "Open Link",
-                        on_click= self.handle_paste_link,
-                        bgcolor=ft.Colors.BLUE_400,
-                        color=ft.Colors.WHITE,
-                        col={"md": 4},
-                    ),
-                ],
-                run_spacing={"xs": 10},
-                alignment=ft.MainAxisAlignment.CENTER, 
-            ),
-            alignment=ft.alignment.center,
-        )
-
         paste_section = ft.Container(
             content=ft.Column([
                 ft.Text("Paste a Google Drive folder or file link:" , size=14),
                 self.dash.paste_link_field,
-                button,
+                ft.ElevatedButton(
+                    "Open Link",
+                    on_click=self.handle_paste_link,
+                    bgcolor=ft.Colors.BLUE_400,
+                    color=ft.Colors.WHITE,
+                    icon=ft.Icons.LINK
+                ),
                 ft.Text(
                     "Supported formats:\n"
                     "• https://drive.google.com/drive/folders/FOLDER_ID\n"
@@ -182,14 +178,24 @@ class PasteLinksManager:
                 self.dash.page.update()
                 self.dash.folder_navigator.show_folder_contents(file_id, name)
             else:
-                info_snack = ft.SnackBar(
-                    content=ft.Text(f"File detected: {name}"),
-                    bgcolor=ft.Colors.BLUE_400,
-                    open=True
-                )
-                self.dash.page.snack_bar = info_snack
-                self.dash.page.update()
-                self.dash.file_manager.show_file_info(info)
+                if self.file_preview:
+                    info_snack = ft.SnackBar(
+                        content=ft.Text(f"Opening preview: {name}"),
+                        bgcolor=ft.Colors.BLUE_400,
+                        open=True
+                    )
+                    self.dash.page.snack_bar = info_snack
+                    self.dash.page.update()
+                    self.file_preview.show_preview(file_id=file_id, file_name=name)
+                else:
+                    info_snack = ft.SnackBar(
+                        content=ft.Text(f"File detected: {name}"),
+                        bgcolor=ft.Colors.BLUE_400,
+                        open=True
+                    )
+                    self.dash.page.snack_bar = info_snack
+                    self.dash.page.update()
+                    self.dash.file_manager.show_file_info(info)
 
             self.dash.paste_link_field.value = ""
 
@@ -223,6 +229,11 @@ class PasteLinksManager:
                 content=ft.Row([
                     ft.Icon(icon, size=20),
                     ft.Text(item["name"], expand=True),
+                    ft.IconButton(
+                        icon=ft.Icons.VISIBILITY,
+                        tooltip="Preview" if not is_folder else "Open",
+                        on_click=lambda e, it=item: self.open_saved_link(it)
+                    ) if self.file_preview or is_folder else ft.Container(),
                     ft.IconButton(
                         icon=ft.Icons.DELETE,
                         tooltip="Delete",
