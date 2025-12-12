@@ -47,11 +47,33 @@ class AssignmentManager:
             'deadline': final_deadline.isoformat() if final_deadline else None,
             'max_score': max_score or '100',
             'attachment': self.todo.selected_attachment["name"],
+            'attachment_file_id': None,
+            'attachment_file_link': None,
             'drive_folder_id': drive_folder_id,
             'target_for': target_for,
             'created': datetime.datetime.now().strftime('%Y-%m-%d %H:%M'),
             'status': 'Active'
         }
+        
+        if self.todo.selected_attachment["path"] and self.todo.drive_service and drive_folder_id:
+            try:
+                self.todo.show_snackbar("Uploading attachment to Drive...", ft.Colors.BLUE)
+                self.todo.page.update()
+                
+                result = self.todo.drive_service.upload_file(
+                    self.todo.selected_attachment["path"],
+                    parent_id=drive_folder_id,
+                    file_name=f"ATTACHMENT_{self.todo.selected_attachment['name']}"
+                )
+                
+                if result:
+                    new_assignment['attachment_file_id'] = result.get('id')
+                    new_assignment['attachment_file_link'] = result.get('webViewLink')
+                    self.todo.show_snackbar("Attachment uploaded successfully!", ft.Colors.GREEN)
+                else:
+                    self.todo.show_snackbar("Warning: Attachment upload failed", ft.Colors.ORANGE)
+            except Exception as ex:
+                self.todo.show_snackbar(f"Attachment upload error: {str(ex)}", ft.Colors.ORANGE)
         
         self.todo.assignments.append(new_assignment)
         self.todo.data_manager.save_assignments(self.todo.assignments)
@@ -189,6 +211,47 @@ class AssignmentManager:
             ) if self.todo.drive_service else ft.Container()
         ]) if drive_folder_name else ft.Container()
         
+        attachment_row = ft.Container()
+        if assignment.get('attachment'):
+            attachment_controls = [
+                ft.Icon(ft.Icons.ATTACH_FILE, size=16, color=ft.Colors.GREY_700),
+                ft.Text(f"Attachment: {assignment['attachment']}", size=13, color=ft.Colors.GREY_700)
+            ]
+            
+            
+            if assignment.get('attachment_file_id') and self.file_preview:
+                attachment_controls.append(
+                    ft.IconButton(
+                        icon=ft.Icons.VISIBILITY,
+                        icon_size=16,
+                        tooltip="Preview Attachment",
+                        on_click=lambda e, fid=assignment['attachment_file_id'], 
+                                fname=assignment['attachment']: self._preview_attachment(fid, fname)
+                    )
+                )
+            
+            
+            if assignment.get('attachment_file_link'):
+                attachment_controls.append(
+                    ft.IconButton(
+                        icon=ft.Icons.OPEN_IN_NEW,
+                        icon_size=16,
+                        tooltip="Open in Drive",
+                        on_click=lambda e, link=assignment['attachment_file_link']: self._open_link(link)
+                    )
+                )
+            elif assignment.get('attachment_file_id'):
+                attachment_controls.append(
+                    ft.IconButton(
+                        icon=ft.Icons.OPEN_IN_NEW,
+                        icon_size=16,
+                        tooltip="Open in Drive",
+                        on_click=lambda e, fid=assignment['attachment_file_id']: self._open_drive_file(fid)
+                    )
+                )
+            
+            attachment_row = ft.Row(attachment_controls)
+        
         
         target_for = assignment.get('target_for', 'all')
         target_labels = {'all': 'All Students', 'bridging': 'Bridging Only', 'regular': 'Regular Only'}
@@ -220,6 +283,7 @@ class AssignmentManager:
                 ]),
                 ft.Text(f"Max Score: {assignment.get('max_score', 'N/A')}", size=13),
                 drive_row,
+                attachment_row,  
                 ft.Row([
                     ft.Icon(ft.Icons.PEOPLE, size=16),
                     ft.Text(f"Submissions: {submission_count}/{total_students}", size=13),
@@ -265,6 +329,57 @@ class AssignmentManager:
         drive_folder_id = assignment.get('drive_folder_id')
         drive_folder_name = self.todo.get_folder_name_by_id(drive_folder_id) if drive_folder_id else None
         
+        
+        attachment_row = ft.Container()
+        if assignment.get('attachment'):
+            attachment_controls = [
+                ft.Icon(ft.Icons.ATTACH_FILE, size=16, color=ft.Colors.PURPLE),
+                ft.Text(f"Attachment: {assignment['attachment']}", size=13, color=ft.Colors.PURPLE, 
+                       weight=ft.FontWeight.BOLD)
+            ]
+            
+            
+            if assignment.get('attachment_file_id') and self.file_preview:
+                attachment_controls.append(
+                    ft.IconButton(
+                        icon=ft.Icons.VISIBILITY,
+                        icon_size=18,
+                        icon_color=ft.Colors.BLUE,
+                        tooltip="Preview Attachment",
+                        on_click=lambda e, fid=assignment['attachment_file_id'], 
+                                fname=assignment['attachment']: self._preview_attachment(fid, fname)
+                    )
+                )
+            
+            
+            if assignment.get('attachment_file_link'):
+                attachment_controls.append(
+                    ft.IconButton(
+                        icon=ft.Icons.DOWNLOAD,
+                        icon_size=18,
+                        icon_color=ft.Colors.GREEN,
+                        tooltip="Download Attachment",
+                        on_click=lambda e, link=assignment['attachment_file_link']: self._open_link(link)
+                    )
+                )
+            elif assignment.get('attachment_file_id'):
+                attachment_controls.append(
+                    ft.IconButton(
+                        icon=ft.Icons.DOWNLOAD,
+                        icon_size=18,
+                        icon_color=ft.Colors.GREEN,
+                        tooltip="Download Attachment",
+                        on_click=lambda e, fid=assignment['attachment_file_id']: self._open_drive_file(fid)
+                    )
+                )
+            
+            attachment_row = ft.Container(
+                content=ft.Row(attachment_controls),
+                bgcolor=ft.Colors.with_opacity(0.1, ft.Colors.PURPLE),
+                padding=8,
+                border_radius=5
+            )
+        
         upload_btn = ft.Container()
         if drive_folder_id and self.todo.drive_service:
             upload_btn = ft.ElevatedButton(
@@ -297,6 +412,7 @@ class AssignmentManager:
                     ft.Icon(ft.Icons.FOLDER_SHARED, size=16, color=ft.Colors.BLUE),
                     ft.Text(f"Submit to: {drive_folder_name}", size=13, color=ft.Colors.BLUE),
                 ]) if drive_folder_name else ft.Container(),
+                attachment_row,  
                 ft.Row([
                     ft.Icon(ft.Icons.ASSIGNMENT, size=16),
                     ft.Text(
@@ -407,6 +523,21 @@ class AssignmentManager:
             file_name = submission.get('file_name', 'Submission')
             self.file_preview.show_preview(file_id=submission['file_id'], file_name=file_name)
     
+    def _preview_attachment(self, file_id, file_name):
+        """Preview attachment file"""
+        if self.file_preview:
+            self.file_preview.show_preview(file_id=file_id, file_name=file_name)
+    
+    def _open_link(self, link):
+        """Open link in browser"""
+        import webbrowser
+        webbrowser.open(link)
+    
+    def _open_drive_file(self, file_id):
+        """Open Drive file in browser"""
+        import webbrowser
+        webbrowser.open(f"https://drive.google.com/file/d/{file_id}/view")
+    
     def edit_assignment_dialog(self, assignment):
         
         title_field = ft.TextField(value=assignment['title'], label="Title", width=320)
@@ -425,6 +556,31 @@ class AssignmentManager:
             initial_name = self.todo.get_folder_name_by_id(current_fid[0])
         
         folder_label = ft.Text(f"Folder: {initial_name}", size=12, italic=True)
+        
+        
+        current_attachment = {'path': None, 'name': assignment.get('attachment'), 
+                             'file_id': assignment.get('attachment_file_id')}
+        attachment_display = ft.Text(
+            f"Current: {current_attachment['name']}" if current_attachment['name'] else "No attachment",
+            size=12, italic=True
+        )
+        
+        def on_file_picked(e: ft.FilePickerResultEvent):
+            if e.files:
+                current_attachment['path'] = e.files[0].path
+                current_attachment['name'] = e.files[0].name
+                attachment_display.value = f"New: {e.files[0].name}"
+                self.todo.page.update()
+        
+        file_picker = ft.FilePicker(on_result=on_file_picked)
+        self.todo.page.overlay.append(file_picker)
+        self.todo.page.update()
+        
+        change_attachment_btn = ft.TextButton(
+            "Change Attachment",
+            icon=ft.Icons.ATTACH_FILE,
+            on_click=lambda e: file_picker.pick_files()
+        )
         
         def update_edit_folder(fid):
             current_fid[0] = fid
@@ -458,6 +614,27 @@ class AssignmentManager:
             assignment['max_score'] = score_field.value
             assignment['drive_folder_id'] = current_fid[0]
             assignment['target_for'] = target_dropdown.value
+            
+            
+            if current_attachment['path'] and self.todo.drive_service and current_fid[0]:
+                try:
+                    self.todo.show_snackbar("Uploading new attachment...", ft.Colors.BLUE)
+                    self.todo.page.update()
+                    
+                    result = self.todo.drive_service.upload_file(
+                        current_attachment['path'],
+                        parent_id=current_fid[0],
+                        file_name=f"ATTACHMENT_{current_attachment['name']}"
+                    )
+                    
+                    if result:
+                        assignment['attachment'] = current_attachment['name']
+                        assignment['attachment_file_id'] = result.get('id')
+                        assignment['attachment_file_link'] = result.get('webViewLink')
+                        self.todo.show_snackbar("Attachment uploaded!", ft.Colors.GREEN)
+                except Exception as ex:
+                    self.todo.show_snackbar(f"Attachment upload error: {str(ex)}", ft.Colors.ORANGE)
+            
             self.todo.data_manager.save_assignments(self.todo.assignments)
             close_overlay(e)
             self.todo.display_assignments()
@@ -468,6 +645,9 @@ class AssignmentManager:
             desc_field,
             ft.Row([score_field, target_dropdown], spacing=10),
             ft.Row([folder_label, change_folder_btn], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+            ft.Divider(),
+            ft.Text("Attachment:", weight=ft.FontWeight.BOLD, size=13),
+            ft.Row([attachment_display, change_attachment_btn], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
             ft.Container(height=10),
             ft.Row([
                 ft.TextButton("Cancel", on_click=lambda e: close_overlay(e)),
