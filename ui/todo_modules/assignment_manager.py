@@ -55,14 +55,14 @@ class AssignmentManager:
             'status': 'Active'
         }
         
-        if self.todo.selected_attachment["path"] and self.todo.drive_service and drive_folder_id:
+        if self.todo.selected_attachment["path"] and self.todo.drive_service and self.todo.data_manager.lms_root_id:
             try:
-                self.todo.show_snackbar("Uploading attachment to Drive...", ft.Colors.BLUE)
+                self.todo.show_snackbar("Uploading attachment to LMS storage...", ft.Colors.BLUE)
                 self.todo.page.update()
                 
                 result = self.todo.drive_service.upload_file(
                     self.todo.selected_attachment["path"],
-                    parent_id=drive_folder_id,
+                    parent_id=self.todo.data_manager.lms_root_id,
                     file_name=f"ATTACHMENT_{self.todo.selected_attachment['name']}"
                 )
                 
@@ -74,6 +74,8 @@ class AssignmentManager:
                     self.todo.show_snackbar("Warning: Attachment upload failed", ft.Colors.ORANGE)
             except Exception as ex:
                 self.todo.show_snackbar(f"Attachment upload error: {str(ex)}", ft.Colors.ORANGE)
+        elif self.todo.selected_attachment["path"] and not self.todo.data_manager.lms_root_id:
+            self.todo.show_snackbar("Warning: No LMS storage folder configured. Attachment not uploaded.", ft.Colors.ORANGE)
         
         self.todo.assignments.append(new_assignment)
         self.todo.data_manager.save_assignments(self.todo.assignments)
@@ -211,6 +213,7 @@ class AssignmentManager:
             ) if self.todo.drive_service else ft.Container()
         ]) if drive_folder_name else ft.Container()
         
+    
         attachment_row = ft.Container()
         if assignment.get('attachment'):
             attachment_controls = [
@@ -338,7 +341,6 @@ class AssignmentManager:
                        weight=ft.FontWeight.BOLD)
             ]
             
-            
             if assignment.get('attachment_file_id') and self.file_preview:
                 attachment_controls.append(
                     ft.IconButton(
@@ -351,7 +353,7 @@ class AssignmentManager:
                     )
                 )
             
-            
+
             if assignment.get('attachment_file_link'):
                 attachment_controls.append(
                     ft.IconButton(
@@ -557,7 +559,7 @@ class AssignmentManager:
         
         folder_label = ft.Text(f"Folder: {initial_name}", size=12, italic=True)
         
-        
+
         current_attachment = {'path': None, 'name': assignment.get('attachment'), 
                              'file_id': assignment.get('attachment_file_id')}
         attachment_display = ft.Text(
@@ -614,7 +616,6 @@ class AssignmentManager:
             assignment['max_score'] = score_field.value
             assignment['drive_folder_id'] = current_fid[0]
             assignment['target_for'] = target_dropdown.value
-            
             
             if current_attachment['path'] and self.todo.drive_service and current_fid[0]:
                 try:
