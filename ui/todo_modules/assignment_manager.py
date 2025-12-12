@@ -383,13 +383,6 @@ class AssignmentManager:
             )
         
         upload_btn = ft.Container()
-        if drive_folder_id and self.todo.drive_service:
-            upload_btn = ft.ElevatedButton(
-                "Upload to Drive",
-                on_click=lambda e, a=assignment: self.todo.submission_manager.upload_to_drive_dialog(a),
-                icon=ft.Icons.CLOUD_UPLOAD,
-                bgcolor=ft.Colors.GREEN
-            )
         
         return ft.Container(
             content=ft.Column([
@@ -526,17 +519,14 @@ class AssignmentManager:
             self.file_preview.show_preview(file_id=submission['file_id'], file_name=file_name)
     
     def _preview_attachment(self, file_id, file_name):
-        """Preview attachment file"""
         if self.file_preview:
             self.file_preview.show_preview(file_id=file_id, file_name=file_name)
     
     def _open_link(self, link):
-        """Open link in browser"""
         import webbrowser
         webbrowser.open(link)
     
     def _open_drive_file(self, file_id):
-        """Open Drive file in browser"""
         import webbrowser
         webbrowser.open(f"https://drive.google.com/file/d/{file_id}/view")
     

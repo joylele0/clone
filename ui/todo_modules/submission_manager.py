@@ -52,119 +52,6 @@ class SubmissionManager:
             return None, "Invalid timing data"
     
     def submit_assignment_dialog(self, assignment):
-        submission_text = ft.TextField(
-            hint_text="Submission notes/comments",
-            multiline=True,
-            min_lines=3,
-            width=350
-        )
-        
-        uploaded_file_info = ft.Text("No file attached", size=12, italic=True)
-        self.temp_file_path = None
-        self.temp_file_name = None
-        
-        def on_file_picked(e: ft.FilePickerResultEvent):
-            if e.files:
-                self.temp_file_path = e.files[0].path
-                self.temp_file_name = e.files[0].name
-                uploaded_file_info.value = f"📎 Attached: {self.temp_file_name}"
-                self.todo.page.update()
-        
-        file_picker = ft.FilePicker(on_result=on_file_picked)
-        self.todo.page.overlay.append(file_picker)
-        self.todo.page.update()
-        
-        upload_to_drive_checkbox = ft.Checkbox(
-            label="Also upload to Google Drive folder",
-            value=False,
-            visible=bool(assignment.get('drive_folder_id') and self.todo.drive_service)
-        )
-        
-        def submit(e):
-            if not self.temp_file_path:
-                self.todo.show_snackbar("Please attach a file", ft.Colors.RED)
-                return
-            
-            existing = self._get_submission_status(assignment['id'], self.todo.current_student_email)
-            submitted_at = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
-            
-            sub_data = {
-                'submission_text': submission_text.value,
-                'submitted_at': submitted_at,
-                'file_name': self.temp_file_name,
-                'local_file_path': self.temp_file_path
-            }
-            
-            if upload_to_drive_checkbox.value and self.todo.drive_service and assignment.get('drive_folder_id'):
-                try:
-                    self.todo.show_snackbar("Uploading to Drive...", ft.Colors.BLUE)
-                    self.todo.page.update()
-                    
-                    student_name = self.todo.current_student_email.split('@')[0] if self.todo.current_student_email else "unknown"
-                    new_filename = f"{student_name}_{self.temp_file_name}"
-                    
-                    result = self.todo.drive_service.upload_file(
-                        self.temp_file_path,
-                        parent_id=assignment.get('drive_folder_id'),
-                        file_name=new_filename
-                    )
-                    
-                    if result:
-                        sub_data['file_id'] = result.get('id')
-                        sub_data['file_link'] = result.get('webViewLink')
-                        sub_data['uploaded_to_drive'] = True
-                        self.todo.show_snackbar("File uploaded to Drive!", ft.Colors.GREEN)
-                    else:
-                        self.todo.show_snackbar("Drive upload failed, but submission saved locally", ft.Colors.ORANGE)
-                except Exception as ex:
-                    self.todo.show_snackbar(f"Drive upload error: {str(ex)}, but submission saved locally", ft.Colors.ORANGE)
-            
-            if existing:
-                existing.update(sub_data)
-            else:
-                new_sub = {
-                    'id': str(datetime.datetime.now().timestamp()),
-                    'assignment_id': assignment['id'],
-                    'student_email': self.todo.current_student_email,
-                    'grade': None,
-                    'feedback': None
-                }
-                new_sub.update(sub_data)
-                self.todo.submissions.append(new_sub)
-            
-            self.todo.data_manager.save_submissions(self.todo.submissions)
-            
-            if self.todo.notification_service:
-                student_name = self.todo.current_student_email.split('@')[0] if self.todo.current_student_email else "Student"
-                self.todo.notification_service.notify_submission_received(assignment, student_name)
-            
-            close_overlay(e)
-            self.todo.display_assignments()
-            self.todo.show_snackbar("Assignment submitted successfully!", ft.Colors.GREEN)
-        
-        content = ft.Column([
-            ft.Text("Submit your assignment:", size=14),
-            submission_text,
-            ft.Row([
-                ft.ElevatedButton("Attach File", icon=ft.Icons.ATTACH_FILE, 
-                                 on_click=lambda _: file_picker.pick_files()),
-                ft.Container(content=uploaded_file_info, padding=ft.padding.only(left=10))
-            ]),
-            upload_to_drive_checkbox,
-            ft.Container(height=10),
-            ft.Row([
-                ft.TextButton("Cancel", on_click=lambda e: close_overlay(e)),
-                ft.ElevatedButton("Submit", on_click=submit, icon=ft.Icons.SEND)
-            ], alignment=ft.MainAxisAlignment.END)
-        ], spacing=10)
-        
-        overlay, close_overlay = self.todo.show_overlay(
-            content,
-            f"Submit: {assignment['title']}",
-            width=450
-        )
-    
-    def upload_to_drive_dialog(self, assignment):
         drive_folder_id = assignment.get('drive_folder_id')
         if not drive_folder_id or not self.todo.drive_service:
             self.todo.show_snackbar("No Drive folder linked", ft.Colors.RED)
@@ -174,6 +61,13 @@ class SubmissionManager:
         
         selected_folder_id = [drive_folder_id]
         folder_display = ft.Text(f"Target: {initial_folder_name}", size=13)
+        
+        submission_text = ft.TextField(
+            hint_text="Submission notes/comments",
+            multiline=True,
+            min_lines=3,
+            width=350
+        )
         
         def update_folder(fid):
             selected_folder_id[0] = fid
@@ -230,18 +124,22 @@ class SubmissionManager:
                     existing = self._get_submission_status(assignment['id'], self.todo.current_student_email)
                     submitted_at = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
                     
+                    
+                    notes = submission_text.value.strip() if submission_text.value else "Uploaded directly to Drive"
+                    
                     if existing:
                         existing['submitted_at'] = submitted_at
                         existing['file_id'] = result.get('id')
                         existing['file_name'] = new_filename
                         existing['file_link'] = result.get('webViewLink')
                         existing['uploaded_to_drive'] = True
+                        existing['submission_text'] = notes
                     else:
                         self.todo.submissions.append({
                             'id': str(datetime.datetime.now().timestamp()),
                             'assignment_id': assignment['id'],
                             'student_email': self.todo.current_student_email,
-                            'submission_text': "Uploaded directly to Drive",
+                            'submission_text': notes,
                             'submitted_at': submitted_at,
                             'grade': None,
                             'feedback': None,
@@ -276,8 +174,10 @@ class SubmissionManager:
         content = ft.Column([
             ft.Text(f"Assignment: {assignment.get('title')}", weight=ft.FontWeight.BOLD),
             ft.Divider(),
+            submission_text,
+            ft.Container(height=10),
             folder_selector,
-            ft.Text("Select a file to upload directly to the Google Drive folder.", size=14),
+            ft.Text("Select a file to upload to the Google Drive folder.", size=14),
             ft.ElevatedButton(
                 "Choose File",
                 icon=ft.Icons.FILE_UPLOAD,
@@ -292,9 +192,11 @@ class SubmissionManager:
         
         overlay, close_overlay = self.todo.show_overlay(
             content,
-            "Upload to Drive",
-            width=400
+            f"Submit: {assignment['title']}",
+            width=450
         )
+    
+
     
     def view_submissions_dialog(self, assignment):
         submissions_list = ft.Column(scroll="auto", spacing=10)
