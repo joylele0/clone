@@ -33,12 +33,16 @@ def repair_filesystem(cwd):
 
 
 def load_credentials(app_path, cwd):
-    possible_paths = [
-        os.path.join(app_path, "services", "web.json"),
-        os.path.join(cwd, "services", "web.json"),
-        os.path.join(app_path, "web.json"),
-        os.path.join(cwd, "web.json")
-    ]
+    filenames = ["web.json", "credentials.json"]
+    possible_paths = []
+    
+    for filename in filenames:
+        possible_paths.extend([
+            os.path.join(app_path, "services", filename),
+            os.path.join(cwd, "services", filename),
+            os.path.join(app_path, filename),
+            os.path.join(cwd, filename)
+        ])
     
     for creds_path in possible_paths:
         if os.path.exists(creds_path):
@@ -79,6 +83,7 @@ def main(page: ft.Page):
         from services.auth_service import GoogleAuth
         from ui.dashboard import Dashboard
         from ui.login import LoginView
+        from ui.custom_control.multi_account_manager import MultiAccountManager
         
         try:
             from ui.firebase_mobile_login import FirebaseMobileLogin
@@ -93,6 +98,7 @@ def main(page: ft.Page):
 
         redirect_url = get_redirect_url()
         auth_service = GoogleAuth(credentials_file=creds['path'])
+        account_manager = MultiAccountManager()
         
         from flet.auth.providers import GoogleOAuthProvider
         
@@ -119,6 +125,11 @@ def main(page: ft.Page):
                 token_data['client_secret'] = creds['client_secret']
             
             if auth_service.login_with_token(token_data):
+                user_info = auth_service.get_user_info()
+                if user_info:
+                    email = user_info.get("emailAddress")
+                    account_manager.add_account(email, user_info, token_data)
+                    account_manager.set_current_account(email)
                 show_dashboard()
             else:
                 show_snackbar("Authentication failed: Could not complete login")
@@ -132,15 +143,42 @@ def main(page: ft.Page):
         
         def show_dashboard():
             page.controls.clear()
-            dashboard = Dashboard(page, auth_service, handle_logout)
+            dashboard = Dashboard(
+                page, 
+                auth_service, 
+                handle_logout,
+                on_add_account=handle_add_account,
+                on_switch_account=handle_switch_account
+            )
             page.add(dashboard.get_view() if hasattr(dashboard, 'get_view') else dashboard)
             page.update()
         
         def handle_logout():
+            current_email = account_manager.get_current_account()
+            if current_email:
+                account_manager.remove_account(current_email)
+            
             auth_service.logout()
             if hasattr(page.auth, 'logout'):
                 page.auth.logout()
             show_login()
+        
+        def handle_add_account():
+            show_login()
+        
+        def handle_switch_account(email):
+            account_data = account_manager.get_account(email)
+            if account_data:
+                token_data = account_data.get("token_data")
+                if auth_service.login_with_token(token_data):
+                    account_manager.set_current_account(email)
+                    show_dashboard()
+                else:
+                    show_snackbar(f"Failed to switch to {email}. Please login again.")
+                    account_manager.remove_account(email)
+                    show_login()
+            else:
+                show_snackbar(f"Account {email} not found.")
         
         def show_login():
             page.controls.clear()
@@ -170,6 +208,10 @@ def main(page: ft.Page):
             page.update()
         
         if auth_service.is_authenticated():
+            user_info = auth_service.get_user_info()
+            if user_info:
+                email = user_info.get("emailAddress")
+                account_manager.set_current_account(email)
             show_dashboard()
         else:
             show_login()
