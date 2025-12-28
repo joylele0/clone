@@ -225,3 +225,5 @@ lms_data/
 
 saved_links.json
 firebase_config.json
+
+storage/
