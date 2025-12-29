@@ -28,10 +28,10 @@ class FileManager:
             self.show_file_info(item)
         
         menu_items = [
-            ft.PopupMenuItem(text="Preview", on_click=on_preview) if self.file_preview and not is_folder else None,
-            ft.PopupMenuItem(text="Info", on_click=on_info),
-            ft.PopupMenuItem(text="Rename", on_click=on_rename),
-            ft.PopupMenuItem(text="Delete", on_click=on_delete),
+            ft.PopupMenuItem(text="Preview", icon=ft.Icons.VISIBILITY, on_click=on_preview) if self.file_preview and not is_folder else None,
+            ft.PopupMenuItem(text="Info", icon=ft.Icons.INFO, on_click=on_info),
+            ft.PopupMenuItem(text="Rename", icon=ft.Icons.EDIT, on_click=on_rename),
+            ft.PopupMenuItem(text="Delete", icon=ft.Icons.DELETE, on_click=on_delete),
         ]
 
         return [item for item in menu_items if item is not None]
@@ -40,7 +40,7 @@ class FileManager:
         folder_name = folder.get("name", "Untitled")
         display_name = folder_name if len(folder_name) < 40 else folder_name[:37] + "..."
         
-        # menu_items = self.show_menu(folder, is_folder=True, is_shared_drive=is_shared_drive)
+        menu_items = self.show_menu(folder, is_folder=True, is_shared_drive=is_shared_drive)
 
         return ft.Container(
                 content=ft.Row([
@@ -49,6 +49,7 @@ class FileManager:
                         ft.Text(display_name, size=14),
                         ft.Text(f"{subfolder_count} folders", size=12, color=ft.Colors.GREY_600),
                     ], expand=True),
+                    ft.PopupMenuButton(items=menu_items),
                 ]),
                 padding=8,
                 ink=True,

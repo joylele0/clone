@@ -17,10 +17,12 @@ class FolderNavigator:
                 self.dash.folder_list.controls.append(ft.Text("Failed to load folders."))
             else:
                 files = result.get("files", [])
-                folders = [f for f in files if f.get("mimeType") == "application/vnd.google-apps.folder"]
-                if not folders:
-                    self.dash.folder_list.controls.append(ft.Text("No folders found"))
+                
+                if not files:
+                    self.dash.folder_list.controls.append(ft.Text("No items found"))
                 else:
+                    
+                    folders = [f for f in files if f.get("mimeType") == "application/vnd.google-apps.folder"]
                     for folder in folders:
                         sub_result = self.dash.drive.list_files(folder["id"], page_size=100)
                         sub_count = 0 if sub_result is None else len([
@@ -28,6 +30,10 @@ class FolderNavigator:
                             if f.get("mimeType") == "application/vnd.google-apps.folder"
                         ])
                         self.dash.folder_list.controls.append(self.dash.file_manager.create_folder_item(folder, sub_count))
+                    
+                    regular_files = [f for f in files if f.get("mimeType") != "application/vnd.google-apps.folder"]
+                    for file in regular_files:
+                        self.dash.folder_list.controls.append(self.dash.file_manager.create_file_item(file))
         except:
             self.dash.folder_list.controls.append(ft.Text("Error loading your folders", color=ft.Colors.RED))
 
