@@ -1,6 +1,8 @@
 import flet as ft
 import traceback
 
+from utils.common import show_snackbar
+
 
 class LoginBase(ft.Column):
     def __init__(self, page, auth_service, on_success=None):
@@ -135,13 +137,8 @@ class LoginView(LoginBase):
             self.page.launch_url(oauth_url)
             
             self.update_status("Complete sign-in in browser, then return to app", ft.Colors.BLUE_600, False)
-            
-            self.page.snack_bar = ft.SnackBar(
-                content=ft.Text("Browser opening... Complete sign-in, then return here."),
-                action="OK"
-            )
-            self.page.snack_bar.open = True
-            self.page.update()
-            
+
+            show_snackbar(self.page, "Browser opened. Complete sign-in, then return here.", ft.Colors.BLUE_600)
+
         except Exception as ex:
             self.handle_error(ex, "Browser launch")

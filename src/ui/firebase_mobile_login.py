@@ -1,6 +1,7 @@
 import flet as ft
 import urllib.parse
 import urllib.request
+import urllib.error
 import json
 import secrets
 import threading

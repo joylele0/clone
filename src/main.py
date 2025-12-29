@@ -86,6 +86,7 @@ def main(page: ft.Page):
         from ui.dashboard import Dashboard
         from ui.login import LoginView
         from ui.custom_control.multi_account_manager import MultiAccountManager
+        from utils.common import show_snackbar
         
         try:
             from ui.firebase_mobile_login import FirebaseMobileLogin
@@ -132,11 +133,11 @@ def main(page: ft.Page):
         
         def handle_on_login(e):
             if e.error:
-                show_snackbar(f"Login Error: {e.error}")
+                show_snackbar(f"Login Error: {e.error}", ft.Colors.RED)
                 return
             
             if not hasattr(page.auth, 'token') or not page.auth.token:
-                show_snackbar("Authentication failed: No token received")
+                show_snackbar("Authentication failed: No token received", ft.Colors.RED)
                 return
             
             token_data = page.auth.token
@@ -153,15 +154,10 @@ def main(page: ft.Page):
                     account_manager.set_current_account(email)
                 show_dashboard()
             else:
-                show_snackbar("Authentication failed: Could not complete login")
+                show_snackbar("Authentication failed: Could not complete login", ft.Colors.RED)
         
         page.on_login = handle_on_login
-        
-        def show_snackbar(message):
-            page.snack_bar = ft.SnackBar(content=ft.Text(message), action="Dismiss")
-            page.snack_bar.open = True
-            page.update()
-        
+                
         def show_dashboard():
             page.controls.clear()
             dashboard = Dashboard(
@@ -194,7 +190,7 @@ def main(page: ft.Page):
             
             account_data = account_manager.get_account(email)
             if not account_data:
-                show_snackbar(f"Account {email} not found.")
+                show_snackbar(f"Account {email} not found.", ft.Colors.RED)
                 return
             
             token_data = account_data.get("token_data")
@@ -203,7 +199,7 @@ def main(page: ft.Page):
                     account_manager.set_current_account(email)
                     show_dashboard()
                 else:
-                    show_snackbar(f"Session expired for {email}. Please login again.")
+                    show_snackbar(f"Session expired for {email}. Please login again.", ft.Colors.ORANGE)
                     if hasattr(page.auth, 'logout'):
                         page.auth.logout()
                     show_login(switching_to_email=email)

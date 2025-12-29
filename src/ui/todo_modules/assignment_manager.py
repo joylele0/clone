@@ -1,6 +1,8 @@
 import flet as ft
 import datetime
 
+from utils.common import open_drive_file, open_url, show_snackbar
+
 
 class AssignmentManager:
     
@@ -102,7 +104,7 @@ class AssignmentManager:
         
         if self.todo.selected_attachment["path"] and self.todo.drive_service and self.todo.data_manager.lms_root_id:
             try:
-                self.todo.show_snackbar("Uploading attachment to subject folder...", ft.Colors.BLUE)
+                show_snackbar(self.todo.page, "Uploading attachment to subject folder...", ft.Colors.BLUE)
                 self.todo.page.update()
                 
                 result = self.todo.storage_manager.upload_assignment_attachment(
@@ -115,13 +117,13 @@ class AssignmentManager:
                 if result:
                     new_assignment['attachment_file_id'] = result.get('id')
                     new_assignment['attachment_file_link'] = result.get('webViewLink')
-                    self.todo.show_snackbar("Attachment uploaded successfully!", ft.Colors.GREEN)
+                    show_snackbar(self.todo.page, "Attachment uploaded successfully!", ft.Colors.GREEN)
                 else:
-                    self.todo.show_snackbar("Warning: Attachment upload failed", ft.Colors.ORANGE)
+                    show_snackbar(self.todo.page, "Warning: Attachment upload failed", ft.Colors.ORANGE)
             except Exception as ex:
-                self.todo.show_snackbar(f"Attachment upload error: {str(ex)}", ft.Colors.ORANGE)
+                show_snackbar(self.todo.page, f"Attachment upload error: {str(ex)}", ft.Colors.ORANGE)
         elif self.todo.selected_attachment["path"] and not self.todo.data_manager.lms_root_id:
-            self.todo.show_snackbar("Warning: No LMS storage folder configured. Attachment not uploaded.", ft.Colors.ORANGE)
+            show_snackbar(self.todo.page, "Warning: No LMS storage folder configured. Attachment not uploaded.", ft.Colors.ORANGE)
         
         self.todo.assignments.append(new_assignment)
         self.todo.data_manager.save_assignments(self.todo.assignments)
@@ -132,7 +134,7 @@ class AssignmentManager:
         self._reset_form()
         
         self.todo.display_assignments()
-        self.todo.show_snackbar("Assignment added! Students notified.", ft.Colors.GREEN)
+        show_snackbar(self.todo.page, "Assignment added! Students notified.", ft.Colors.GREEN)
     
     def show_past_deadline_dialog(self, deadline, current_time):
         
@@ -223,7 +225,7 @@ class AssignmentManager:
         self.todo.page.update()
         
         error_count = len(errors)
-        self.todo.show_snackbar(
+        show_snackbar(self.todo.page,
             f"{error_count} error{'s' if error_count > 1 else ''} - Please fix before creating assignment",
             ft.Colors.RED
         )
@@ -357,7 +359,7 @@ class AssignmentManager:
                         icon_size=16,
                         tooltip="Preview Attachment",
                         on_click=lambda e, fid=assignment['attachment_file_id'], 
-                                fname=assignment['attachment']: self._preview_attachment(fid, fname)
+                                fname=assignment['attachment']: self.file_preview and self.file_preview.show_preview(file_id=fid, file_name=fname)
                     )
                 )
             
@@ -367,7 +369,7 @@ class AssignmentManager:
                         icon=ft.Icons.OPEN_IN_NEW,
                         icon_size=16,
                         tooltip="Open in Drive",
-                        on_click=lambda e, link=assignment['attachment_file_link']: self._open_link(link)
+                        on_click=lambda e, link=assignment['attachment_file_link']: open_url(link)
                     )
                 )
             elif assignment.get('attachment_file_id'):
@@ -376,7 +378,7 @@ class AssignmentManager:
                         icon=ft.Icons.OPEN_IN_NEW,
                         icon_size=16,
                         tooltip="Open in Drive",
-                        on_click=lambda e, fid=assignment['attachment_file_id']: self._open_drive_file(fid)
+                        on_click=lambda e, fid=assignment['attachment_file_id']: open_drive_file(fid)
                     )
                 )
             
@@ -446,7 +448,7 @@ class AssignmentManager:
     def create_student_assignment_card(self, assignment):
         status = self.get_status(assignment.get('deadline'), assignment['id'])
         time_remaining = self.get_time_remaining(assignment.get('deadline'))
-        submission = self.get_submission_status(assignment['id'], self.todo.current_student_email)
+        submission = self.todo.submission_manager.get_submission_status(assignment['id'], self.todo.current_student_email)
         
         status_color = {
             "Active": ft.Colors.GREEN,
@@ -473,7 +475,7 @@ class AssignmentManager:
                         icon_color=ft.Colors.BLUE,
                         tooltip="Preview Attachment",
                         on_click=lambda e, fid=assignment['attachment_file_id'], 
-                                fname=assignment['attachment']: self._preview_attachment(fid, fname)
+                                fname=assignment['attachment']: self.file_preview and self.file_preview.show_preview(file_id=fid, file_name=fname)
                     )
                 )
             
@@ -484,7 +486,7 @@ class AssignmentManager:
                         icon_size=18,
                         icon_color=ft.Colors.GREEN,
                         tooltip="Download Attachment",
-                        on_click=lambda e, link=assignment['attachment_file_link']: self._open_link(link)
+                        on_click=lambda e, link=assignment['attachment_file_link']: open_url(link)
                     )
                 )
             elif assignment.get('attachment_file_id'):
@@ -494,7 +496,7 @@ class AssignmentManager:
                         icon_size=18,
                         icon_color=ft.Colors.GREEN,
                         tooltip="Download Attachment",
-                        on_click=lambda e, fid=assignment['attachment_file_id']: self._open_drive_file(fid)
+                        on_click=lambda e, fid=assignment['attachment_file_id']: open_drive_file(fid)
                     )
                 )
             
@@ -602,7 +604,7 @@ class AssignmentManager:
     
     def get_status(self, deadline_str, assignment_id=None):
         if self.todo.current_mode == "student" and assignment_id and self.todo.current_student_email:
-            submission = self.get_submission_status(assignment_id, self.todo.current_student_email)
+            submission = self.todo.submission_manager.get_submission_status(assignment_id, self.todo.current_student_email)
             if submission:
                 return "Completed"
         
@@ -620,11 +622,6 @@ class AssignmentManager:
             print(f"Error parsing deadline in get_status: {e}, deadline_str: {deadline_str}")
             return "Active"
     
-    def get_submission_status(self, assignment_id, student_email):
-        for sub in self.todo.submissions:
-            if sub['assignment_id'] == assignment_id and sub['student_email'] == student_email:
-                return sub
-        return None
     
     def get_submission_count(self, assignment_id):
         return sum(1 for sub in self.todo.submissions if sub['assignment_id'] == assignment_id)
@@ -639,18 +636,6 @@ class AssignmentManager:
         if self.file_preview and submission.get('file_id'):
             file_name = submission.get('file_name', 'Submission')
             self.file_preview.show_preview(file_id=submission['file_id'], file_name=file_name)
-    
-    def _preview_attachment(self, file_id, file_name):
-        if self.file_preview:
-            self.file_preview.show_preview(file_id=file_id, file_name=file_name)
-    
-    def _open_link(self, link):
-        import webbrowser
-        webbrowser.open(link)
-    
-    def _open_drive_file(self, file_id):
-        import webbrowser
-        webbrowser.open(f"https://drive.google.com/file/d/{file_id}/view")
     
     def edit_assignment_dialog(self, assignment):
         title_field = ft.TextField(value=assignment['title'], label="Title", width=320)
@@ -729,7 +714,7 @@ class AssignmentManager:
             
             if current_attachment['path'] and self.todo.drive_service and self.todo.data_manager.lms_root_id:
                 try:
-                    self.todo.show_snackbar("Uploading new attachment...", ft.Colors.BLUE)
+                    show_snackbar(self.todo.page, "Uploading new attachment...", ft.Colors.BLUE)
                     self.todo.page.update()
                     
                     result = self.todo.storage_manager.upload_assignment_attachment(
@@ -743,14 +728,14 @@ class AssignmentManager:
                         assignment['attachment'] = current_attachment['name']
                         assignment['attachment_file_id'] = result.get('id')
                         assignment['attachment_file_link'] = result.get('webViewLink')
-                        self.todo.show_snackbar("Attachment uploaded!", ft.Colors.GREEN)
+                        show_snackbar(self.todo.page, "Attachment uploaded!", ft.Colors.GREEN)
                 except Exception as ex:
-                    self.todo.show_snackbar(f"Attachment upload error: {str(ex)}", ft.Colors.ORANGE)
+                    show_snackbar(self.todo.page, f"Attachment upload error: {str(ex)}", ft.Colors.ORANGE)
             
             self.todo.data_manager.save_assignments(self.todo.assignments)
             close_overlay(e)
             self.todo.display_assignments()
-            self.todo.show_snackbar("Assignment updated", ft.Colors.BLUE)
+            show_snackbar(self.todo.page, "Assignment updated", ft.Colors.BLUE)
         
         content = ft.Column([
             title_field,
@@ -767,7 +752,7 @@ class AssignmentManager:
             ], alignment=ft.MainAxisAlignment.END)
         ], spacing=10)
         
-        overlay, close_overlay = self.todo.show_overlay(content, "Edit Assignment", width=400)
+        close_overlay = self.todo.show_overlay(content, "Edit Assignment", width=400)
     
     def delete_assignment(self, assignment):
         def confirm(e):
@@ -778,19 +763,19 @@ class AssignmentManager:
             self.todo.data_manager.save_submissions(self.todo.submissions)
             close_overlay(e)
             self.todo.display_assignments()
-            self.todo.show_snackbar("Assignment deleted", ft.Colors.ORANGE)
+            show_snackbar(self.todo.page,"Assignment deleted", ft.Colors.ORANGE)
         
         content = ft.Column([
             ft.Text(f"Delete '{assignment['title']}'?"),
             ft.Text("This will also delete all submissions.", size=12, color=ft.Colors.GREY_600),
             ft.Container(height=10),
-            ft.Row([
+            ft.Row([ 
                 ft.TextButton("Cancel", on_click=lambda e: close_overlay(e)),
                 ft.ElevatedButton("Delete", on_click=confirm, bgcolor=ft.Colors.RED, color=ft.Colors.WHITE)
             ], alignment=ft.MainAxisAlignment.END)
         ], tight=True, spacing=10)
         
-        overlay, close_overlay = self.todo.show_overlay(content, "Confirm Delete", width=350)
+        close_overlay = self.todo.show_overlay(content, "Confirm Delete", width=350)
     
     def show_notifications_dialog(self):
         if not self.todo.notification_service:
@@ -827,7 +812,7 @@ class AssignmentManager:
         
         def mark_all_read(e):
             self.todo.notification_service.mark_all_as_read(self.todo.current_student_email)
-            self.todo.show_snackbar("All notifications marked as read", ft.Colors.BLUE)
+            show_snackbar(self.todo.page, "All notifications marked as read", ft.Colors.BLUE)
             close_overlay(e)
             self.todo.display_assignments()
         

@@ -1,5 +1,6 @@
 import flet as ft
 import datetime
+from utils.common import open_drive_file, open_url
 
 
 class SubmissionManager:
@@ -130,7 +131,7 @@ class SubmissionManager:
                     upload_status.value = f"✓ Uploaded to link drive"
                     self.todo.show_snackbar(f"File uploaded to link drive folder!", ft.Colors.GREEN)
                     
-                    existing = self._get_submission_status(assignment['id'], self.todo.current_student_email)
+                    existing = self.get_submission_status(assignment['id'], self.todo.current_student_email)
                     submitted_at = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
                     
                     notes = submission_text.value.strip() if submission_text.value else "Uploaded to link drive"
@@ -372,12 +373,12 @@ class SubmissionManager:
                             "Preview File",
                             icon=ft.Icons.VISIBILITY,
                             on_click=lambda e, fid=sub.get('file_id'), fname=sub.get('file_name', 'File'): 
-                                self._preview_file(fid, fname) if self.file_preview and fid else None
+                                self.file_preview.show_preview(file_id=fid, file_name=fname) if self.file_preview else None
                         ) if self.file_preview else ft.Container(),
                         ft.TextButton(
                             "Open in Browser",
                             icon=ft.Icons.OPEN_IN_NEW,
-                            on_click=lambda e, link=sub['file_link']: self._open_link(link)
+                            on_click=lambda e, link=sub['file_link']: open_url(link)
                         )
                     ], spacing=10)
                 elif sub.get('file_id') and self.todo.drive_service:
@@ -386,12 +387,12 @@ class SubmissionManager:
                             "Preview File",
                             icon=ft.Icons.VISIBILITY,
                             on_click=lambda e, fid=sub['file_id'], fname=sub.get('file_name', 'File'): 
-                                self._preview_file(fid, fname) if self.file_preview else None
+                                self.file_preview.show_preview(file_id=fid, file_name=fname) if self.file_preview else None
                         ) if self.file_preview else ft.Container(),
                         ft.TextButton(
                             "Open in Browser",
                             icon=ft.Icons.OPEN_IN_NEW,
-                            on_click=lambda e, fid=sub['file_id']: self._open_drive_file(fid)
+                            on_click=lambda e, fid=sub['file_id']: open_drive_file(fid)
                         )
                     ], spacing=10)
                 
@@ -466,20 +467,9 @@ class SubmissionManager:
         
         self.todo.page.update()
     
-    def _get_submission_status(self, assignment_id, student_email):
+    def get_submission_status(self, assignment_id, student_email):
         for sub in self.todo.submissions:
             if sub['assignment_id'] == assignment_id and sub['student_email'] == student_email:
                 return sub
         return None
     
-    def _preview_file(self, file_id, file_name):
-        if self.file_preview and file_id:
-            self.file_preview.show_preview(file_id=file_id, file_name=file_name)
-    
-    def _open_link(self, link):
-        import webbrowser
-        webbrowser.open(link)
-    
-    def _open_drive_file(self, file_id):
-        import webbrowser
-        webbrowser.open(f"https://drive.google.com/file/d/{file_id}/view")

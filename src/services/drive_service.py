@@ -248,7 +248,7 @@ class DriveService:
             downloader = MediaIoBaseDownload(file, request)
             done = False
             while done is False:
-                status, done = downloader.next_chunk()
+                done = downloader.next_chunk()
             
             return file.getvalue().decode('utf-8')
         except Exception as error:

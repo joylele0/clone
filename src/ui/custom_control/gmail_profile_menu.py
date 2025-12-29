@@ -1,4 +1,5 @@
 import flet as ft
+from utils.common import show_snackbar
 
 
 class GmailProfileMenu:
@@ -239,12 +240,10 @@ class GmailProfileMenu:
         self.hide_menu()
         if self.on_add_account:
             self.on_add_account(e)
+            
         else:
-            self.page.snack_bar = ft.SnackBar(
-                content=ft.Text("Add account feature coming soon!"),
-            )
-            self.page.snack_bar.open = True
-            self.page.update()
+            show_snackbar(self.page, "Add account feature coming soon!", ft.Colors.BLUE)
+
     
     def handle_switch_account(self, email):
         self.hide_menu()

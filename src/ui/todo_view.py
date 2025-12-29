@@ -1,5 +1,4 @@
 import flet as ft
-import datetime
 import json
 import os
 from pathlib import Path
@@ -242,10 +241,6 @@ class TodoView:
         self.current_student_email = self.student_dropdown.value
         self.display_assignments()
     
-    def show_snackbar(self, message, color=ft.Colors.BLUE):
-        self.page.snack_bar = ft.SnackBar(content=ft.Text(message), bgcolor=color)
-        self.page.snack_bar.open = True
-        self.page.update()
     
     def show_overlay(self, content, title=None, width=400, height=None):
         def close_overlay(e):

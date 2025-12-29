@@ -1,5 +1,5 @@
 import flet as ft
-from utils.common import format_file_size, create_icon_button, show_snackbar, create_dialog, open_drive_file
+from utils.common import format_file_size, create_icon_button, open_drive_file
 
 
 class FileManager:
@@ -13,10 +13,6 @@ class FileManager:
             self.file_preview = None
 
     def show_menu(self, item, is_folder=False, is_shared_drive=False):
-        
-        def on_preview(e):
-            if not is_folder:
-                self.preview_file(item)
 
         def on_rename(e):
             self._rename_file_dialog(item)
@@ -28,7 +24,6 @@ class FileManager:
             self.show_file_info(item)
         
         menu_items = [
-            ft.PopupMenuItem(text="Preview", icon=ft.Icons.VISIBILITY, on_click=on_preview) if self.file_preview and not is_folder else None,
             ft.PopupMenuItem(text="Info", icon=ft.Icons.INFO, on_click=on_info),
             ft.PopupMenuItem(text="Rename", icon=ft.Icons.EDIT, on_click=on_rename),
             ft.PopupMenuItem(text="Delete", icon=ft.Icons.DELETE, on_click=on_delete),

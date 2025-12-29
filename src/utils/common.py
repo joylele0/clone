@@ -1,20 +1,23 @@
 import flet as ft
 import json
-import os
 from pathlib import Path
-from datetime import datetime
+from typing import Dict, Any
 
-
-def load_json_file(filepath, default=None):
+def load_json_file(filepath: str | Path, default: Dict[str, Any] | None = None) -> Dict[str, Any]:
     if isinstance(filepath, str):
         filepath = Path(filepath)
+
     if filepath.exists():
         try:
-            with open(filepath, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except:
+            with filepath.open("r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, dict):
+                    return data
+        except Exception:
             pass
-    return default if default is not None else []
+
+    return default if default is not None else {}
+
 
 
 def save_json_file(filepath, data):
@@ -75,11 +78,6 @@ def open_drive_folder(folder_id):
     open_url(f"https://drive.google.com/drive/folders/{folder_id}")
 
 
-def show_snackbar(page, message, color=ft.Colors.BLUE):
-    page.snack_bar = ft.SnackBar(content=ft.Text(message), bgcolor=color)
-    page.snack_bar.open = True
-    page.update()
-
 
 def create_icon_button(icon, tooltip, on_click, color=None):
     return ft.IconButton(
@@ -90,17 +88,27 @@ def create_icon_button(icon, tooltip, on_click, color=None):
     )
 
 
-def create_dialog(page, title, content, actions=None):
-    def close_dialog_handler(e):
-        dialog.open = False
-        page.update()
+def show_snackbar(page, message, color=ft.Colors.BLUE, duration=3):
+    import threading
     
-    dialog = ft.AlertDialog(
-        title=ft.Text(title),
-        content=content,
-        actions=actions or [ft.TextButton("OK", on_click=close_dialog_handler)]
+    toast = ft.Container(
+        content=ft.Text(message, color=ft.Colors.WHITE),
+        bgcolor=color,
+        padding=10,
+        border_radius=5,
+        bottom=20,
+        right=20,
+        opacity=0.9
     )
-    page.dialog = dialog
-    dialog.open = True
+    
+    page.overlay.append(toast)
     page.update()
-    return dialog
+    
+    def remove_toast():
+        import time
+        time.sleep(duration)
+        if toast in page.overlay:
+            page.overlay.remove(toast)
+            page.update()
+    
+    threading.Thread(target=remove_toast, daemon=True).start()

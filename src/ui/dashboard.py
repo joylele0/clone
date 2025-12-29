@@ -1,5 +1,6 @@
 import flet as ft
 from services.drive_service import DriveService
+from src.utils.common import show_snackbar
 from ui.custom_control.custom_controls import ButtonWithMenu
 from ui.custom_control.gmail_profile_menu import GmailProfileMenu
 from ui.custom_control.multi_account_manager import MultiAccountManager
@@ -107,22 +108,16 @@ class Dashboard:
     def handle_add_account(self, e):
         if self.on_add_account_callback:
             self.on_add_account_callback()
+            show_snackbar(self.page, "Redirecting to add account...", ft.Colors.PRIMARY)
         else:
-            self.page.snack_bar = ft.SnackBar(
-                content=ft.Text("Redirecting to add another account..."),
-            )
-            self.page.snack_bar.open = True
-            self.page.update()
+            show_snackbar(self.page, "Redirecting to add account...", ft.Colors.PRIMARY)
 
     def handle_switch_account(self, email):
         if self.on_switch_account_callback:
             self.on_switch_account_callback(email)
         else:
-            self.page.snack_bar = ft.SnackBar(
-                content=ft.Text(f"Switching to {email}..."),
-            )
-            self.page.snack_bar.open = True
-            self.page.update()
+            show_snackbar(self.page, f"Switching to {email}...", ft.Colors.PRIMARY)
+
 
     def handle_action(self, selected_item):
         if selected_item == "Create Folder":
