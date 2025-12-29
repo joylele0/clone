@@ -169,8 +169,7 @@ def main(page: ft.Page):
                 auth_service, 
                 handle_logout,
                 on_add_account=handle_add_account,
-                on_switch_account=handle_switch_account,
-                on_remove_account=handle_remove_account
+                on_switch_account=handle_switch_account
             )
             page.add(dashboard.get_view() if hasattr(dashboard, 'get_view') else dashboard)
             page.update()
@@ -212,39 +211,6 @@ def main(page: ft.Page):
                 if hasattr(page.auth, 'logout'):
                     page.auth.logout()
                 show_login(switching_to_email=email)
-        
-        def handle_remove_account(email):
-            def confirm_remove(e):
-                account_manager.remove_account(email)
-                dialog.open = False
-                page.update()
-                show_snackbar(f"Account {email} removed")
-                
-                if email == account_manager.get_current_account():
-                    remaining_accounts = account_manager.get_all_accounts()
-                    if remaining_accounts:
-                        handle_switch_account(remaining_accounts[0])
-                    else:
-                        handle_logout()
-                else:
-                    show_dashboard()
-            
-            def cancel_remove(e):
-                dialog.open = False
-                page.update()
-            
-            dialog = ft.AlertDialog(
-                title=ft.Text("Remove Account"),
-                content=ft.Text(f"Are you sure you want to remove {email}?"),
-                actions=[
-                    ft.TextButton("Cancel", on_click=cancel_remove),
-                    ft.TextButton("Remove", on_click=confirm_remove),
-                ],
-            )
-            
-            page.dialog = dialog
-            dialog.open = True
-            page.update()
         
         def show_login(is_adding_account=False, switching_to_email=None):
             page.controls.clear()

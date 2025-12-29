@@ -2,13 +2,12 @@ import flet as ft
 
 
 class GmailProfileMenu:
-    def __init__(self, page, user_info, on_logout, on_add_account=None, on_switch_account=None, on_remove_account=None, saved_accounts=None, account_manager=None):
+    def __init__(self, page, user_info, on_logout, on_add_account=None, on_switch_account=None, saved_accounts=None, account_manager=None):
         self.page = page
         self.user_info = user_info
         self.on_logout = on_logout
         self.on_add_account = on_add_account
         self.on_switch_account = on_switch_account
-        self.on_remove_account = on_remove_account
         self.saved_accounts = saved_accounts or []
         self.account_manager = account_manager
         self.menu_open = False
@@ -263,30 +262,74 @@ class GmailProfileMenu:
                         self.saved_accounts = [a for a in self.saved_accounts if a != email]
             except Exception as ex:
                 print(f"[ERROR] Failed to remove account {email}: {ex}")
-            dialog.open = False
-            self.page.update()
+            close_confirmation()
             self.hide_menu()
             self.show_menu()
 
         def cancel_remove(e):
-            dialog.open = False
-            self.page.update()
+            close_confirmation()
 
-        dialog = ft.AlertDialog(
-            modal=False,
-            title=ft.Text("Remove Account"),
-            content=ft.Text(f"Are you sure you want to remove {email}?"),
-            actions=[
-                ft.TextButton("Cancel", on_click=cancel_remove),
-                ft.TextButton("Remove", on_click=confirm_remove),
+        def close_confirmation():
+            if hasattr(self, 'confirmation_overlay'):
+                self.page.overlay.remove(self.confirmation_overlay)
+                self.page.update()
+
+        # Create confirmation dialog
+        confirmation_dialog = ft.Container(
+            width=400,
+            bgcolor=ft.Colors.WHITE,
+            border_radius=16,
+            padding=24,
+            shadow=ft.BoxShadow(
+                spread_radius=2,
+                blur_radius=15,
+                color=ft.Colors.BLACK38,
+            ),
+            content=ft.Column([
+                ft.Text(
+                    "Remove Account",
+                    size=20,
+                    weight=ft.FontWeight.BOLD,
+                ),
+                ft.Container(height=16),
+                ft.Text(
+                    f"Are you sure you want to remove {email}?",
+                    size=14,
+                    color=ft.Colors.GREY_800,
+                ),
+                ft.Container(height=24),
+                ft.Row([
+                    ft.TextButton(
+                        "Cancel",
+                        on_click=cancel_remove,
+                    ),
+                    ft.Container(expand=True),
+                    ft.ElevatedButton(
+                        "Remove",
+                        on_click=confirm_remove,
+                        bgcolor=ft.Colors.RED_400,
+                        color=ft.Colors.WHITE,
+                    ),
+                ], alignment=ft.MainAxisAlignment.END),
+            ], spacing=0, tight=True),
+        )
+
+        self.confirmation_overlay = ft.Stack(
+            controls=[
+                ft.Container(
+                    expand=True,
+                    bgcolor=ft.Colors.with_opacity(0.5, ft.Colors.BLACK),
+                    on_click=lambda e: close_confirmation(),
+                ),
+                ft.Container(
+                    content=confirmation_dialog,
+                    alignment=ft.alignment.center,
+                ),
             ],
         )
-        self.page.dialog = dialog
-        dialog.open = True
-        self.page.update()
 
-    def handle_remove_account(self, email):
-        self.show_remove_confirmation(email)
+        self.page.overlay.append(self.confirmation_overlay)
+        self.page.update()
             
     def _create_profile_avatar(self, size=36):
         if self.profile_pic_url:

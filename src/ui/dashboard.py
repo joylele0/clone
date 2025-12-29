@@ -10,13 +10,12 @@ from ui.dashboard_modules.paste_links_manager import PasteLinksManager
 
 
 class Dashboard:
-    def __init__(self, page, auth_service, on_logout, on_add_account=None, on_switch_account=None, on_remove_account=None):
+    def __init__(self, page, auth_service, on_logout, on_add_account=None, on_switch_account=None):
         self.page = page
         self.auth = auth_service
         self.on_logout = on_logout
         self.on_add_account_callback = on_add_account
         self.on_switch_account_callback = on_switch_account
-        self.on_remove_account_callback = on_remove_account
         self.drive = DriveService(auth_service.get_service())
 
         self.current_folder_id = "root"
@@ -125,10 +124,6 @@ class Dashboard:
             self.page.snack_bar.open = True
             self.page.update()
 
-    def handle_remove_account(self, email):
-        if self.on_remove_account_callback:
-            self.on_remove_account_callback(email)
-
     def handle_action(self, selected_item):
         if selected_item == "Create Folder":
             self.file_manager.create_new_folder_dialog()
@@ -161,7 +156,6 @@ class Dashboard:
             on_logout=self.handle_logout,
             on_add_account=self.handle_add_account,
             on_switch_account=self.handle_switch_account,
-            on_remove_account=self.handle_remove_account,
             saved_accounts=saved_accounts,
             account_manager=self.account_manager
         )
