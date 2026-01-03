@@ -141,20 +141,50 @@ flet main.py
 
 ```
 capstone/
-├── main.py                 # Application entry point
-├── README.md               # Project Overview
-├── saved_links.json        # Saved Drive links (auto-generated)
-├── favorites.json          # Saved favorites (auto-generated)
-├── services/
-│   ├── auth_service.py     # Google OAuth authentication
-│   ├── drive_service.py    # Google Drive API operations
-│   ├── credentials.json    # OAuth credentials (you provide)
-│   └── token.pickle        # Auth token (auto-generated)
-├── ui/
-│   ├── dashboard.py        # Main dashboard UI
-│   ├── login.py            # Login screen
-│   └── custom_control/     # Custom UI components
-└── venv/                   # Virtual environment
+├── src/
+│   ├── assets/               
+│   │   ├── icon.png          # Default application icon
+│   │   ├── icon_android.png  # Andriod app icon
+│   │   └── splash_android.png # Android splash screen icon
+│   └── services/
+│   │   ├── auth_service.py   # Authentication logic
+│   │   ├── drive_service.py  # Drive API operations
+│   │   ├── fcm_integration.py # Firebase Cloud Messaging setup
+│   │   ├── fcm_service.py    # Firebase notification logic
+│   │   ├── file_preview_service.py # File thumbnail/review
+│   │   └── notification_service.py # Notiication management
+│   └── ui/
+│   │   └── custom_control/
+│   │   │   ├── __init__.py   
+│   │   │   ├── custom_controls.py        # Custom UI components
+│   │   │   ├── gmail_profile_menu.py     # Gmail profile dropdown
+│   │   │   ├── multi_account_manager.py  # Interface for switching accounts
+│   │   └── dashboard_modules/   
+│   │   │   ├── __init__.py
+│   │   │   ├── file_manager.py        # Logic for managing files
+│   │   │   ├── folder_navigator.py    # Directory and breadcrumbs
+│   │   │   ├── paste_links_manager.py # URL link management
+│   │   └── todo modules/
+│   │   │   ├── __init__.py
+│   │   │   ├── dashboard.py           # Main dashboard UI
+│   │   │   ├── firebase_mobile_login.py # Mobile login
+│   │   │   ├── login.py               # Login screen 
+│   │   │   └── todo_view.py           # To do screen
+│   └── utils/
+│   │   ├── __init__.py
+│   │   └── main.py           # Main application entry point
+├── venv/                     # Virtual environment
+├── .gitignore                # Git exclusion file
+├── connect.py                # Database or network connection logic
+├── LICENSE.txt               # Project licensing terms
+├── lms_config.json           # LMS configuration settings
+├── pyproject.toml            # Build system configuration
+├── requirements.txt          # Python project dependencies
+├── README.md                 # Project documentation
+├── requirements.txt          # Project dependencies
+├── test_firebase_connections.py # Firebase connection tests
+├── test_notifications.py     # Notification system tests
+└── vitural.txt               # Environment reference log
 ```
 
 ## 🔧 Configuration
