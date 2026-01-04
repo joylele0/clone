@@ -2,6 +2,7 @@ import os
 import sys
 import json
 import flet as ft
+from google.oauth2.credentials import Credentials
 
 SCOPES = ["https://www.googleapis.com/auth/drive"]
 
@@ -95,11 +96,11 @@ def main(page: ft.Page):
         from ui.custom_control.multi_account_manager import MultiAccountManager
         from utils.common import show_snackbar
         from services.fcm_integration import register_fcm_for_user
+        from google.auth.transport.requests import Request
 
         script_dir = os.path.dirname(os.path.abspath(__file__))
         parent_dir = os.path.dirname(script_dir)
         file_to_find = "fcm_email.txt"
-
 
         found_files = find_files(parent_dir, file_to_find)
         if found_files:
@@ -176,7 +177,6 @@ def main(page: ft.Page):
                 if user_info:
                     email = user_info.get("emailAddress")
                     account_manager.set_current_account(email)
-
                     register_fcm_for_user(page, email)
                 show_dashboard()
             else:
@@ -224,19 +224,43 @@ def main(page: ft.Page):
                 return
             
             token_data = account_data.get("token_data")
-            if token_data:
-                if auth_service.login_with_token(token_data):
-                    account_manager.set_current_account(email)
-                    register_fcm_for_user(page, email)
-                    show_dashboard()
-                else:
-                    show_snackbar(page, f"Session expired for {email}. Please login again.", ft.Colors.ORANGE)
-                    if hasattr(page.auth, 'logout'):
-                        page.auth.logout()
-                    show_login(switching_to_email=email)
-            else:
-                if hasattr(page.auth, 'logout'):
-                    page.auth.logout()
+            if not token_data:
+                show_snackbar(page, f"No credentials for {email}", ft.Colors.ORANGE)
+                show_login(switching_to_email=email)
+                return
+            
+            try:
+                show_snackbar(page, f"Switching to {email}...", ft.Colors.BLUE, duration=1)
+                
+                new_creds = Credentials(
+                    token=token_data.get('token'),
+                    refresh_token=token_data.get('refresh_token'),
+                    token_uri=token_data.get('token_uri', 'https://oauth2.googleapis.com/token'),
+                    client_id=token_data.get('client_id'),
+                    client_secret=token_data.get('client_secret'),
+                    scopes=token_data.get('scopes', SCOPES)
+                )
+                
+                if new_creds.expired and new_creds.refresh_token:
+                    print(f"Refreshing token for {email}...")
+                    new_creds.refresh(Request())
+                    print(f"✓ Token refreshed for {email}")
+                    
+                    token_data['token'] = new_creds.token
+                    account_manager.update_account_credentials(email, token_data)
+                
+                auth_service.creds = new_creds
+                auth_service._save_credentials()
+                
+                account_manager.set_current_account(email)
+                register_fcm_for_user(page, email)
+                
+                show_dashboard()
+                show_snackbar(page, f"Switched to {email}", ft.Colors.GREEN, duration=2)
+                
+            except Exception as e:
+                print(f"Error switching to {email}: {e}")
+                show_snackbar(page, f"Session expired for {email}. Please login again.", ft.Colors.ORANGE)
                 show_login(switching_to_email=email)
         
         def show_login(is_adding_account=False, switching_to_email=None):
@@ -312,7 +336,6 @@ def main(page: ft.Page):
             current_email = save_current_account_if_logged_in()
             if current_email:
                 account_manager.set_current_account(current_email)
-                # Re-register FCM on Android app restart
                 register_fcm_for_user(page, current_email)
             show_dashboard()
         else:
